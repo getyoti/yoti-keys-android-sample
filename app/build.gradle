@@ -1,0 +1,65 @@
+
+buildscript {
+    repositories {
+        mavenCentral()
+        google()
+    }
+    dependencies {
+        classpath "com.google.gms:google-services:$googlePlayServicePluginVersion"
+    }
+}
+
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+
+android {
+    compileSdkVersion parent.ext.androidCompileSdkVersion
+
+    defaultConfig {
+        applicationId "com.yoti.mobile.android.keys.sampleapp"
+        minSdkVersion parent.ext.androidMinSdkVersion
+        targetSdkVersion parent.ext.androidTargetSdkVersion
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    compileOptions {
+        // Change compatibility to Java 8 to get Java 8 IDE support
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    useLibrary 'org.apache.http.legacy'
+
+    buildTypes {
+        release {
+            resValue "string", "TAPLINX_SDK_KEY", '"YOUR_TAP_LINX_KEY"'
+        }
+        debug {
+            resValue "string", "TAPLINX_SDK_KEY", '"YOUR_TAP_LINX_KEY"'
+        }
+    }
+}
+
+dependencies {
+    compileOnly 'org.jbundle.util.osgi.wrapped:org.jbundle.util.osgi.wrapped.org.apache.http.client:4.1.2'
+
+    implementation("com.yoti.mobile.android.keys:key-sdk-common:1.3.0-RC")
+    implementation("com.yoti.mobile.android.keys:key-sdk-ev2:1.3.0-RC")
+
+    implementation parent.ext.libKotlin
+    implementation parent.ext.libAppCompat
+    implementation parent.ext.libConstraintLayout
+    implementation parent.ext.libRecyclerView
+
+    implementation parent.ext.libCoroutineCore
+    implementation parent.ext.libCoroutineAndroid
+
+    implementation 'androidx.core:core-ktx:1.0.2'
+
+}
+
+apply plugin: 'com.google.gms.google-services'

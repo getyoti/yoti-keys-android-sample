@@ -1,0 +1,59 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    repositories {
+        google()
+        jcenter()
+        mavenCentral()
+        maven { url 'https://maven.fabric.io/public' }
+
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:$androidGradlePluginVersion"
+        classpath "io.fabric.tools:gradle:$fabricGradlePluginVersion"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
+        maven { url "https://nexus.internal.yoti.com/repository/maven-releases" }
+
+        maven {
+            url nxpRepositoryUrl
+            credentials {
+                username nxpRepositoryUserName
+                password nxpRepositoryPassword
+            }
+        }
+    }
+
+    configurations.all {
+        resolutionStrategy.force "com.google.android.gms:play-services-analytics:${libPlayServicesAnalyticsVersion}"
+    }
+
+    ext {
+
+        // Android config
+        appVersionCode = appVersionCode.toInteger()
+        appVersionName = "${appVersionName}"
+        androidMinSdkVersion = minSdkVersion.toInteger()
+        androidTargetSdkVersion = targetSdkVersion.toInteger()
+        androidCompileSdkVersion = compileSdkVersion.toInteger()
+
+        libAppCompat = "androidx.appcompat:appcompat:${appCompatVersion}"
+        libRecyclerView = "androidx.recyclerview:recyclerview:${recyclerViewVersion}"
+        libConstraintLayout = "androidx.constraintlayout:constraintlayout:${constraintLayoutVersion}"
+
+        libCoroutineCore = "org.jetbrains.kotlinx:kotlinx-coroutines-core:$libCoroutinesVersion"
+        libCoroutineAndroid = "org.jetbrains.kotlinx:kotlinx-coroutines-android:$libCoroutinesVersion"
+
+        libKotlin = "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

@@ -1,0 +1,23 @@
+<resources>
+    <string name="app_name">SDKSampleApp</string>
+
+    <string name="action_read_info">ReadInfo</string>
+    <string name="action_read">Read</string>
+    <string name="action_reset">Reset</string>
+    <string name="action_write">Write</string>
+    <string name="action_read_reset">Read &amp; Reset</string>
+    <string name="action_read_file">Read File</string>
+    <string name="action_write_file">Write File</string>
+
+    <string-array name="key_actions_array">
+        <item>@string/action_read_info</item>
+        <item>@string/action_read</item>
+        <item>@string/action_reset</item>
+        <item>@string/action_write</item>
+        <item>@string/action_read_reset</item>
+        <item>@string/action_read_file</item>
+        <item>@string/action_write_file</item>
+    </string-array>
+
+
+</resources>
