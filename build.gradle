@@ -19,7 +19,6 @@ allprojects {
     repositories {
         google()
         jcenter()
-        maven { url "https://nexus.internal.yoti.com/repository/maven-releases" }
 
         maven {
             url nxpRepositoryUrl

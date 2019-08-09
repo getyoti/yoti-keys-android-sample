@@ -295,11 +295,11 @@ android {
 
 dependencies {
     
-    implementation("com.yoti.mobile.android.keys:key-sdk-common:1.2.0")
+    implementation("com.yoti.mobile.android.keys:key-sdk-common:1.3.0-RC")
     // if you need ev2 chip support
-    implementation("com.yoti.mobile.android.keys:key-sdk-ev2:1.2.0")
+    implementation("com.yoti.mobile.android.keys:key-sdk-ev2:1.3.0-RC")
     // if you need multos chip support
-    implementation("com.yoti.mobile.android.keys:key-sdk-multos:1.2.0")
+    implementation("com.yoti.mobile.android.keys:key-sdk-multos:1.3.0-RC")
 }
 ```
 Make sure you have added the internal yoti nexus server in the list of
@@ -308,7 +308,7 @@ repositories in your root build.gradle:
 allprojects {
     repositories {
         //... other repo
-        maven { url releaseRepository }
+        mavenCentral()
         maven {
           url nxpRepositoryUrl
           credentials {
@@ -321,7 +321,6 @@ allprojects {
 ```
 with these values in your properties files:
 ```
-releaseRepository=https://nexus.internal.yoti.com/repository/maven-releases
 nxpRepositoryUrl=http://maven.taplinx.nxp.com/nexus/content/repositories/taplinx/
 nxpRepositoryUserName=sdkuser
 nxpRepositoryPassword=taplinx
