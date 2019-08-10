@@ -1,5 +1,9 @@
 <img src="http://enablingenterprise.org/wp-content/uploads/2016/10/Yoti_logo-300x150.png" alt="Brand logo" />
 
+# Disclaimer
+The versions 1.x.y only contain hardcoded encryption keys.
+Remote configuration will come in a later versions: 2.x.y
+
 # Yoti Key #
 
 This module contains the source code for the Yoti Key SDK.
