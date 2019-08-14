@@ -255,9 +255,9 @@ class SampleKeyPresenter(
         val keyPayload = createPayloadFromUserInput()
 
         compositeNfcOperation
-                .addOperation(readInteractor, ReadKeyPayloadRequest(key))
-                .addOperation(resetInteractor, NfcOperationRequest(key))
-                .addOperation(writeInteractor, WriteKeyPayloadRequest(key, keyPayload))
+                .addOperation(readInteractor, ReadKeyPayloadRequest(key, pin="1234"))
+                .addOperation(resetInteractor, NfcOperationRequest(key, pin="1234"))
+                .addOperation(writeInteractor, WriteKeyPayloadRequest(key, keyPayload, pin="1234"))
 
         uiScope.launch {
             try {
