@@ -267,11 +267,29 @@ and `MultosChipCheckerFactory`. If you need to support both you can create
 your own subclass of `ChipCheckerFactory` and delegate the implementation 
 of the methods to an instance of ev2 and multos implementation.
 
+#### `PayloadSizeHelper`
+This class allows you to check the size of your payload against the available
+size. You could use this class with the MAX size as parameter to have
+an idea of how big the payload will be before attempting to write it.
+This same helper is also used internally before attempting to write the 
+payload.
+
 # How to add the sdk in your app
 
+Some files contains in the `META-INF` folder of some dependencies create issues at compilation time.
+The temporary fix for now it exclude them :
+```
+    packagingOptions {
+        exclude 'META-INF/kotlinx-io.kotlin_module'
+        exclude 'META-INF/atomicfu.kotlin_module'
+    }
+```
+
 Your app needs to register your application ID on the Tap Linx portal: https://www.mifare.net/devcenter 
-to be allowed to run the Tap Linx SDK. Then you would use the key the following way.
-You need to add these lines in your build.gradle:
+to be allowed to run the Tap Linx SDK. There should a blue "play-like" arrow,
+you should click on it to generate an offline key. Then you would use the key the following way.
+
+To sum-up here are the lines you need to add in your build.gradle:
 ```groovy
 android {
 
@@ -281,29 +299,26 @@ android {
     // Tap Linx SDK key needs to be define as well. if you use product flavour
     // and each flavour has a different application id you will need a key
     // per application ID
-
-    productFlavors {
-        dev {
-            applicationIdSuffix ".debug"
-            resValue "string", "TAPLINX_SDK_KEY", '"aaaaaaaaaa"'
+    
+    packagingOptions {
+        exclude 'META-INF/kotlinx-io.kotlin_module'
+        exclude 'META-INF/atomicfu.kotlin_module'
+    }
+    
+    buildTypes {
+        release {
+            resValue "string", "TAPLINX_SDK_KEY", "REPLACE ME WITH A VALID OFFLINE KEY"
         }
-        staging {
-            applicationIdSuffix ".staging"
-            resValue "string", "TAPLINX_SDK_KEY", '"bbbbbbbbbb"'
-        }
-        production {
-            resValue "string", "TAPLINX_SDK_KEY", '"cccccccccc"'
+        debug {
+            resValue "string", "TAPLINX_SDK_KEY", "REPLACE ME WITH A VALID OFFLINE KEY"
         }
     }
 }
 
 dependencies {
     
-    implementation("com.yoti.mobile.android.keys:key-sdk-common:1.3.0-RC")
-    // if you need ev2 chip support
-    implementation("com.yoti.mobile.android.keys:key-sdk-ev2:1.3.0-RC")
-    // if you need multos chip support
-    implementation("com.yoti.mobile.android.keys:key-sdk-multos:1.3.0-RC")
+    implementation("com.yoti.mobile.android.sdk:key-sdk-common:1.4.1")
+    implementation("com.yoti.mobile.android.sdk:key-sdk-ev2:1.4.1")
 }
 ```
 Make sure you have added the internal yoti nexus server in the list of
@@ -313,6 +328,7 @@ allprojects {
     repositories {
         //... other repo
         mavenCentral()
+        
         maven {
           url nxpRepositoryUrl
           credentials {
@@ -336,7 +352,7 @@ from you manifest:
 ```xml
 <application>
     <meta-data
-        android:name="com.yoti.mobile.android.keys.SDK_KEY"
+        android:name="com.yoti.mobile.android.keys.SDK_KEY_OFFLINE"
         android:value="@string/TAPLINX_SDK_KEY"/>
         
     <uses-library android:name="org.apache.http.legacy" android:required="false"/>

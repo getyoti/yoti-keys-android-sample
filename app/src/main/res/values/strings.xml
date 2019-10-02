@@ -1,13 +1,15 @@
 <resources>
-    <string name="app_name">SDKSampleApp</string>
+    <string name="app_name">Key SDK Sample app</string>
 
     <string name="action_read_info">ReadInfo</string>
     <string name="action_read">Read</string>
     <string name="action_reset">Reset</string>
     <string name="action_write">Write</string>
-    <string name="action_read_reset">Read &amp; Reset</string>
+    <string name="action_read_reset"> Reset, Write &amp; Read</string>
     <string name="action_read_file">Read File</string>
     <string name="action_write_file">Write File</string>
+    <string name="action_write_too_big">Write Too Big</string>
+    <string name="action_multiple_write_same_file">Multiple Write Same File</string>
 
     <string-array name="key_actions_array">
         <item>@string/action_read_info</item>
@@ -17,6 +19,8 @@
         <item>@string/action_read_reset</item>
         <item>@string/action_read_file</item>
         <item>@string/action_write_file</item>
+        <item>@string/action_write_too_big</item>
+        <item>@string/action_multiple_write_same_file</item>
     </string-array>
 
 

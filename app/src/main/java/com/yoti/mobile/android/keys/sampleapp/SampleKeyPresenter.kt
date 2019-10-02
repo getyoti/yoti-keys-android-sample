@@ -1,7 +1,10 @@
 package com.yoti.mobile.android.keys.sampleapp
 
 import android.app.Activity
+import android.graphics.Bitmap.CompressFormat.PNG
+import android.graphics.BitmapFactory
 import android.util.Log
+import com.yoti.mobile.android.keys.sampleapp.KeyAction.MULTIPLE_WRITE_SAME_FILE
 import com.yoti.mobile.android.keys.sampleapp.KeyAction.READ
 import com.yoti.mobile.android.keys.sampleapp.KeyAction.READ_CHIP_INFO
 import com.yoti.mobile.android.keys.sampleapp.KeyAction.READ_FILE
@@ -9,62 +12,70 @@ import com.yoti.mobile.android.keys.sampleapp.KeyAction.READ_RESET
 import com.yoti.mobile.android.keys.sampleapp.KeyAction.RESET
 import com.yoti.mobile.android.keys.sampleapp.KeyAction.WRITE_FILE
 import com.yoti.mobile.android.keys.sampleapp.KeyAction.WRITE_KEY
-import com.yoti.mobile.android.keys.sampleapp.SampleKeyContract.Presenter
-import com.yoti.mobile.android.keys.sampleapp.SampleKeyContract.View
-import com.yoti.mobile.android.keys.sdk.ev2.Ev2ChipCheckerFactory
-import com.yoti.mobile.android.keys.sdk.ev2.MifareDesfireEV2
+import com.yoti.mobile.android.keys.sampleapp.KeyAction.WRITE_TOO_BIG
+import com.yoti.mobile.android.keys.sdk.ev2.CHIP_UNIQUE_NAME
+import com.yoti.mobile.android.keys.sdk.ev2.checker.Ev2ChipCheckerFactory
 import com.yoti.mobile.android.keys.sdk.exception.NfcException
+import com.yoti.mobile.android.keys.sdk.exception.NfcException.Reason.UNEXPECTED_ERROR
 import com.yoti.mobile.android.keys.sdk.interactors.TagDefaultConfigurationLoaderInteractor
 import com.yoti.mobile.android.keys.sdk.interactors.TagDefaultConfigurationLoaderInteractor.TagDefaultConfigLoaderRequest
-import com.yoti.mobile.android.keys.sdk.interactors.model.IKeyPayload
 import com.yoti.mobile.android.keys.sdk.interactors.nfc.BaseNfcOperationInteractor.NfcOperationRequest
 import com.yoti.mobile.android.keys.sdk.interactors.nfc.CompositeNfcInteractor
-import com.yoti.mobile.android.keys.sdk.interactors.nfc.ReadChipHardwareIdInteractor
-import com.yoti.mobile.android.keys.sdk.interactors.nfc.ResetKeyInteractor
 import com.yoti.mobile.android.keys.sdk.interactors.nfc.read.ReadKeyFileInteractor
 import com.yoti.mobile.android.keys.sdk.interactors.nfc.read.ReadKeyFileInteractor.ReadKeyFileRequest
+import com.yoti.mobile.android.keys.sdk.interactors.nfc.read.ReadKeyFileInteractor.ReadKeyFileResponse
 import com.yoti.mobile.android.keys.sdk.interactors.nfc.read.ReadKeyPayloadInteractor
 import com.yoti.mobile.android.keys.sdk.interactors.nfc.read.ReadKeyPayloadInteractor.ReadKeyPayloadRequest
+import com.yoti.mobile.android.keys.sdk.interactors.nfc.read.ReadKeyPayloadInteractor.ReadKeyPayloadResponse
+import com.yoti.mobile.android.keys.sdk.interactors.nfc.util.ReadChipInfoInteractor
+import com.yoti.mobile.android.keys.sdk.interactors.nfc.util.ResetKeyInteractor
 import com.yoti.mobile.android.keys.sdk.interactors.nfc.write.WriteKeyFileInteractor
 import com.yoti.mobile.android.keys.sdk.interactors.nfc.write.WriteKeyFileInteractor.WriteKeyFileRequest
 import com.yoti.mobile.android.keys.sdk.interactors.nfc.write.WriteKeyPayloadInteractor
 import com.yoti.mobile.android.keys.sdk.interactors.nfc.write.WriteKeyPayloadInteractor.WriteKeyPayloadRequest
-import com.yoti.mobile.android.keys.sdk.internal.model.KeyPayloadBuilderFactory
 import com.yoti.mobile.android.keys.sdk.internal.model.Session
 import com.yoti.mobile.android.keys.sdk.internal.model.SessionFactory
 import com.yoti.mobile.android.keys.sdk.internal.model.TagDescriptor.File
-import com.yoti.mobile.android.keys.sdk.internal.model.generic.GenericAttributeType
-import com.yoti.mobile.android.keys.sdk.internal.model.generic.GenericKeyData
-import com.yoti.mobile.android.keys.sdk.internal.model.generic.GenericKeyPayload.GenericFile
-import com.yoti.mobile.android.keys.sdk.internal.model.yoti.YotiAttributeType
-import com.yoti.mobile.android.keys.sdk.internal.nfc.ChipCheckersFactory
-import com.yoti.mobile.android.keys.sdk.internal.nfc.TagDispatcher
-import com.yoti.mobile.android.keys.sdk.internal.util.Base64Util
-import com.yoti.mobile.android.keys.sdk.internal.vendor.AbstractNFCTagDefinition
+import com.yoti.mobile.android.keys.sdk.internal.model.nfc.AbstractNFCTagDefinition
+import com.yoti.mobile.android.keys.sdk.internal.model.nfc.ChipCheckersFactory
+import com.yoti.mobile.android.keys.sdk.internal.model.nfc.TagDispatcher
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.IKeyPayload
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.KeyPayloadBuilderFactory
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.generic.GenericAttributeType
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.generic.GenericAttributeType.STRING
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.generic.GenericKeyData
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.generic.GenericKeyPayload.GenericFile
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.yoti.YotiAttributeType
 import com.yoti.mobile.android.keys.sdk.ui.NfcLinkerPresenter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.util.ArrayList
 
 class SampleKeyPresenter(
-        activity: Activity,
-        private val view: View,
+        private val activity: Activity,
+        private val view: SampleKeyContract.View,
         private val session: Session = SessionFactory.getDefaultSession(),
         chipCheckerFactory: ChipCheckersFactory = Ev2ChipCheckerFactory(activity, session)
 ) :
         NfcLinkerPresenter(view, TagDispatcher(activity, chipCheckerFactory)),
-        Presenter {
+        SampleKeyContract.Presenter {
 
     private val resetInteractor = ResetKeyInteractor(chipCheckerFactory.exceptionFactory)
-    private val readChipInfoInteractor: ReadChipHardwareIdInteractor =
-            ReadChipHardwareIdInteractor(
+    private val readChipInfoInteractor: ReadChipInfoInteractor =
+            ReadChipInfoInteractor(
                     chipCheckerFactory.exceptionFactory
             )
-    private val readInteractor: ReadKeyPayloadInteractor =
-            ReadKeyPayloadInteractor(
-                    activity,
+    private val readKeyInteractor: ReadKeyPayloadInteractor = ReadKeyPayloadInteractor(
+            activity,
+            session,
+            chipCheckerFactory.exceptionFactory
+    )
+    private val writeInteractor: WriteKeyPayloadInteractor =
+            WriteKeyPayloadInteractor(
                     session,
                     chipCheckerFactory.exceptionFactory
             )
@@ -74,34 +85,28 @@ class SampleKeyPresenter(
                     session,
                     chipCheckerFactory.exceptionFactory
             )
-    private val writeInteractor: WriteKeyPayloadInteractor =
-            WriteKeyPayloadInteractor(
-                    session,
-                    chipCheckerFactory.exceptionFactory
-            )
 
     private val writeFileInteractor: WriteKeyFileInteractor =
             WriteKeyFileInteractor(
                     session,
                     chipCheckerFactory.exceptionFactory
             )
+
     private val configLoaderInteractor = TagDefaultConfigurationLoaderInteractor(activity)
 
     private var currentAction: KeyAction? = null
 
-    private val uiScope: CoroutineScope
-        get() = CoroutineScope(Dispatchers.Main + Job())
-
-    val version = File.builder()
+    private val uiScope = CoroutineScope(Dispatchers.Main)
+    private val version = File.Builder()
             .name(YotiAttributeType.VERSION.name)
             .shouldBeEncryptedIndividually(true)
-            .genericAttributeType(GenericAttributeType.STRING)
+            .genericAttributeType(STRING)
             .build()
 
     init {
         resetInteractor.setOnNfcOperationListener(this)
         readChipInfoInteractor.setOnNfcOperationListener(this)
-        readInteractor.setOnNfcOperationListener(this)
+        readKeyInteractor.setOnNfcOperationListener(this)
         writeInteractor.setOnNfcOperationListener(this)
     }
 
@@ -110,10 +115,6 @@ class SampleKeyPresenter(
     }
 
     override fun onProcessYotiKey(key: AbstractNFCTagDefinition) {
-        if (currentAction == null) {
-            view.showToastMessage("Select an action before")
-            return
-        }
 
         when (currentAction) {
             READ_CHIP_INFO -> loadConfig { readChipInfo(key) }
@@ -121,8 +122,11 @@ class SampleKeyPresenter(
             RESET -> loadConfig { reset(key) }
             WRITE_KEY -> loadConfig { write(key) }
             READ_RESET -> loadConfig { multiOperation(key) }
+            WRITE_TOO_BIG -> loadConfig { write(key, true) }
             READ_FILE -> loadConfig { readFile(key) }
             WRITE_FILE -> loadConfig { writeFile(key) }
+            MULTIPLE_WRITE_SAME_FILE -> loadConfig { multiWriteSameFile(key) }
+            null -> view.showToastMessage("Select an action before")
         }
     }
 
@@ -134,9 +138,7 @@ class SampleKeyPresenter(
         uiScope.launch {
             try {
                 val response = readChipInfoInteractor.run(NfcOperationRequest(key))
-                val msg = "Chip info ${response.chipType} : ${Base64Util().encode(
-                        response.chipHardwareId
-                )}"
+                val msg = "Chip info: $response"
 
                 if (BuildConfig.DEBUG) {
                     Log.i(TAG, msg)
@@ -174,7 +176,7 @@ class SampleKeyPresenter(
     private fun read(key: AbstractNFCTagDefinition) {
         uiScope.launch {
             try {
-                val response = readInteractor.run(ReadKeyPayloadRequest(key, pin="1234"))
+                val response = readKeyInteractor.run(ReadKeyPayloadRequest(key, pin = "1234"))
                 val yotiKeyData = response.keyData as GenericKeyData
                 if (BuildConfig.DEBUG) {
                     Log.i(TAG, "Read tag operation completed: \n$yotiKeyData")
@@ -191,30 +193,11 @@ class SampleKeyPresenter(
         }
     }
 
-    private fun readFile(key: AbstractNFCTagDefinition) {
+    private fun write(key: AbstractNFCTagDefinition, forceTooBigPayload: Boolean = false) {
         uiScope.launch {
             try {
-                val response = readFileInteractor.run(ReadKeyFileRequest(version, key, pin="1234"))
-                if (BuildConfig.DEBUG) {
-                    Log.i(TAG, "Read file operation completed: \n$response.fileData")
-                }
-
-                view.showKeyFileData(response.fileData)
-            } catch (nfcException: NfcException) {
-
-                if (BuildConfig.DEBUG) {
-                    Log.e(TAG, "Read file operation failed", nfcException)
-                }
-                onProcessNfcException(nfcException)
-            }
-        }
-    }
-
-    private fun write(key: AbstractNFCTagDefinition) {
-        uiScope.launch {
-            try {
-                val keyPayload = createPayloadFromUserInput()
-                writeInteractor.run(WriteKeyPayloadRequest(key, keyPayload, pin="1234"))
+                val keyPayload = createPayloadFromUserInput(forceTooBigPayload)
+                writeInteractor.run(WriteKeyPayloadRequest(key, keyPayload, pin = "1234"))
                 if (BuildConfig.DEBUG) {
                     Log.i(TAG, "Write operation completed")
                 }
@@ -230,16 +213,38 @@ class SampleKeyPresenter(
         }
     }
 
+    private fun readFile(key: AbstractNFCTagDefinition) {
+        uiScope.launch {
+            try {
+                val response =
+                        readFileInteractor.run(ReadKeyFileRequest(key, version, pin = "1234"))
+                val yotiKeyData = response.fileData
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "Read tag operation completed: \n$yotiKeyData")
+                }
+
+                view.showKeyFileData(yotiKeyData)
+            } catch (nfcException: NfcException) {
+
+                if (BuildConfig.DEBUG) {
+                    Log.e(TAG, "Read tag operation failed", nfcException)
+                }
+                onProcessNfcException(nfcException)
+            }
+        }
+    }
+
     private fun writeFile(key: AbstractNFCTagDefinition) {
         uiScope.launch {
             try {
-                val file = GenericFile(version.name, version.genericAttributeType, "myVersion".toByteArray())
-                writeFileInteractor.run(WriteKeyFileRequest(key, file, pin="1234"))
+                val file =
+                        GenericFile(version.name, STRING, "New Version A bit longer".toByteArray())
+                writeFileInteractor.run(WriteKeyFileRequest(key, file, pin = "1234"))
                 if (BuildConfig.DEBUG) {
                     Log.i(TAG, "Write operation completed")
                 }
 
-                view.showToastMessage("The key has been written")
+                view.showToastMessage("The file has been written")
             } catch (nfcException: NfcException) {
 
                 if (BuildConfig.DEBUG) {
@@ -251,26 +256,68 @@ class SampleKeyPresenter(
     }
 
     private fun multiOperation(key: AbstractNFCTagDefinition) {
-        val compositeNfcOperation = CompositeNfcInteractor()
-        val keyPayload = createPayloadFromUserInput()
-
-        compositeNfcOperation
-                .addOperation(readInteractor, ReadKeyPayloadRequest(key, pin="1234"))
-                .addOperation(resetInteractor, NfcOperationRequest(key, pin="1234"))
-                .addOperation(writeInteractor, WriteKeyPayloadRequest(key, keyPayload, pin="1234"))
-
         uiScope.launch {
             try {
-                val response = compositeNfcOperation.executeAll()
+                val compositeNfcOperation = CompositeNfcInteractor()
+                val keyPayload = createPayloadFromUserInput()
+
+                compositeNfcOperation
+                        .addOperation(resetInteractor, NfcOperationRequest(key))
+                        .addOperation(
+                                writeInteractor,
+                                WriteKeyPayloadRequest(key, keyPayload)
+                        ).addOperation(readKeyInteractor, NfcOperationRequest(key))
+
+                val response =
+                        compositeNfcOperation.executeAll("1234").last() as ReadKeyPayloadResponse
                 if (BuildConfig.DEBUG) {
-                    Log.i(TAG, "read/reset operation completed")
+                    Log.i(TAG, "reset, write, read operation completed")
                 }
 
-                view.showToastMessage("The key has been read and reset")
+                view.showToastMessage("The key has been reset, written and read")
+
+                view.showKeyData(response.keyData as GenericKeyData)
             } catch (nfcException: NfcException) {
 
                 if (BuildConfig.DEBUG) {
-                    Log.e(TAG, "read/reset operation failed", nfcException)
+                    Log.e(TAG, "reset, write, read operation failed", nfcException)
+                }
+                onProcessNfcException(nfcException)
+            }
+        }
+    }
+
+    private fun multiWriteSameFile(key: AbstractNFCTagDefinition) {
+        uiScope.launch {
+            try {
+                val compositeNfcOperation = CompositeNfcInteractor()
+
+                val file = GenericFile(
+                        version.name,
+                        version.genericAttributeType!!,
+                        "New Version A bit longer".toByteArray()
+                )
+
+                compositeNfcOperation
+                        .addOperation(writeFileInteractor, WriteKeyFileRequest(key, file))
+                        .addOperation(writeFileInteractor, WriteKeyFileRequest(key, file))
+                        .addOperation(writeFileInteractor, WriteKeyFileRequest(key, file))
+                        .addOperation(writeFileInteractor, WriteKeyFileRequest(key, file))
+                        .addOperation(writeFileInteractor, WriteKeyFileRequest(key, file))
+                        .addOperation(readFileInteractor, ReadKeyFileRequest(key, version))
+
+                val response =
+                        compositeNfcOperation.executeAll("1234").last() as ReadKeyFileResponse
+                if (BuildConfig.DEBUG) {
+                    Log.i(TAG, "Multiple write operations completed")
+                }
+
+                view.showToastMessage("The key has been read and written multiple times")
+                view.showKeyFileData(response.fileData)
+            } catch (nfcException: NfcException) {
+
+                if (BuildConfig.DEBUG) {
+                    Log.e(TAG, "Multiple write operations failed", nfcException)
                 }
                 onProcessNfcException(nfcException)
             }
@@ -283,13 +330,15 @@ class SampleKeyPresenter(
                 configLoaderInteractor.resetTagConfigurations()
                 val files = createFilesListFromUserInput()
 
-                configLoaderInteractor.run(TagDefaultConfigLoaderRequest(
-                        files = files,
-                        fileForAuthenticity = files[0],
-                        session = session,
-                        requirePinAuth = true,
-                        chip = MifareDesfireEV2.CHIP_UNIQUE_NAME
-                ))
+                configLoaderInteractor.run(
+                        TagDefaultConfigLoaderRequest(
+                                files = files,
+                                fileForAuthenticity = files[0],
+                                session = session,
+                                requirePinAuth = true,
+                                chip = CHIP_UNIQUE_NAME
+                        )
+                )
                 postLoading()
             } catch (throwable: Throwable) {
                 if (BuildConfig.DEBUG) {
@@ -321,6 +370,12 @@ class SampleKeyPresenter(
 
     private fun getDefaultFilesList(): ArrayList<File> {
         val files = ArrayList<File>()
+        val version = File.Builder()
+                .name(YotiAttributeType.VERSION.name)
+                .shouldBeEncryptedIndividually(true)
+                .genericAttributeType(STRING)
+                .build()
+
 
         files.add(version)
 
@@ -332,9 +387,9 @@ class SampleKeyPresenter(
 
         processUserInput { name, _ ->
             val file =
-                    File.builder()
+                    File.Builder()
                             .name(name)
-                            .genericAttributeType(GenericAttributeType.STRING)
+                            .genericAttributeType(STRING)
                             .build()
             files.add(file)
             Log.d(TAG, "File list from user input is: $files")
@@ -343,28 +398,60 @@ class SampleKeyPresenter(
         return files
     }
 
-    private fun createPayloadFromUserInput(): IKeyPayload {
+    private suspend fun createPayloadFromUserInput(
+            makeItToBig: Boolean = false
+    ): IKeyPayload = withContext(Dispatchers.IO) {
         val files = getDefaultFilesList()
 
         val genericPayloadBuilder =
                 KeyPayloadBuilderFactory().createGenericPayloadBuilder()
 
-        genericPayloadBuilder.addAttributeDataToKeyPayload(files[0], "1.0".toByteArray())
+        genericPayloadBuilder.addFileDataToKeyPayload(files[0], "1.0".toByteArray())
 
         processUserInput { name, value ->
             val file =
-                    File.builder()
+                    File.Builder()
                             .name(name)
-                            .genericAttributeType(GenericAttributeType.STRING)
+                            .genericAttributeType(STRING)
                             .build()
-            genericPayloadBuilder.addAttributeDataToKeyPayload(file, value.toByteArray())
+            genericPayloadBuilder.addFileDataToKeyPayload(file, value.toByteArray())
 
             Log.d(TAG, "Adding file to payload: $file")
         }
 
+        if (makeItToBig) {
+            val pictureData = loadBitmap()
+            for (i in 1..5) {
+                val file =
+                        File.Builder()
+                                .name("PictureStream_$i")
+                                .genericAttributeType(GenericAttributeType.PNG)
+                                .build()
+
+                genericPayloadBuilder.addFileDataToKeyPayload(file, pictureData.toByteArray())
+            }
+        }
+
         Log.d(TAG, "Generic payload is:$genericPayloadBuilder")
 
-        return genericPayloadBuilder.build()
+        return@withContext genericPayloadBuilder.build()
+    }
+
+    private suspend fun loadBitmap(): ByteArrayOutputStream = withContext(Dispatchers.IO) {
+        val image = BitmapFactory.decodeResource(activity.resources, R.drawable.selfie);
+        val stream = ByteArrayOutputStream()
+        image.compress(PNG, 100, stream)
+        return@withContext stream
+    }
+
+    fun cancelOperations() {
+        uiScope.cancel()
+    }
+
+    override fun onProcessNfcException(exception: NfcException?) {
+        super.onProcessNfcException(exception)
+
+        view.showExceptionReason(exception?.reason ?: UNEXPECTED_ERROR)
     }
 }
 

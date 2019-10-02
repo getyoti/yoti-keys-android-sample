@@ -10,13 +10,15 @@ import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import com.yoti.mobile.android.keys.sdk.internal.model.generic.GenericDataFile
-import com.yoti.mobile.android.keys.sdk.internal.model.generic.GenericKeyData
+import com.yoti.mobile.android.keys.sdk.exception.NfcException.Reason
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.generic.GenericDataFile
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.generic.GenericKeyData
 import com.yoti.mobile.android.keys.sdk.ui.NfcLinkerActivity
 import com.yoti.mobile.android.keys.sdk.ui.NfcLinkerPresenter
 
 class MainActivity : NfcLinkerActivity(),
         SampleKeyContract.View {
+
     private lateinit var localPresenter: SampleKeyPresenter
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,11 +44,8 @@ class MainActivity : NfcLinkerActivity(),
                     parent: AdapterView<*>?, view: View?, position: Int, id: Long
             ) {
                 val selection = parent?.getItemAtPosition(position)
-                KeyAction.values().forEach {
-                    if (getString(it.resId) == selection) {
-                        localPresenter.onActionChanged(it)
-                    }
-                }
+                val action = KeyAction.values().find { getString(it.resId) == selection }
+                localPresenter.onActionChanged(action!!)
             }
         }
 
@@ -55,6 +54,12 @@ class MainActivity : NfcLinkerActivity(),
             findViewById<TextView>(R.id.status).text = ""
             findViewById<TextView>(R.id.readContent).text = ""
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+
+        localPresenter.cancelOperations()
     }
 
     override fun getPresenter(): NfcLinkerPresenter {
@@ -87,6 +92,11 @@ class MainActivity : NfcLinkerActivity(),
         findViewById<TextView>(R.id.readContent).text = tagPayload.toString()
     }
 
+    override fun showExceptionReason(reason: Reason) {
+        findViewById<TextView>(R.id.status).text = "Exception thrown: $reason"
+
+    }
+
     override fun notifyNfcOperationInProgress() {
         findViewById<TextView>(R.id.status).text = "Nfc operation in progress"
     }
@@ -107,6 +117,8 @@ enum class KeyAction(val resId: Int) {
     WRITE_KEY(R.string.action_write),
     READ_RESET(R.string.action_read_reset),
     READ_FILE(R.string.action_read_file),
-    WRITE_FILE(R.string.action_write_file);
+    WRITE_FILE(R.string.action_write_file),
+    WRITE_TOO_BIG(R.string.action_write_too_big),
+    MULTIPLE_WRITE_SAME_FILE(R.string.action_multiple_write_same_file);
 }
 

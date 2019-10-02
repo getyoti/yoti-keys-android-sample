@@ -1,7 +1,8 @@
 package com.yoti.mobile.android.keys.sampleapp
 
-import com.yoti.mobile.android.keys.sdk.internal.model.generic.GenericDataFile
-import com.yoti.mobile.android.keys.sdk.internal.model.generic.GenericKeyData
+import com.yoti.mobile.android.keys.sdk.exception.NfcException.Reason
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.generic.GenericDataFile
+import com.yoti.mobile.android.keys.sdk.internal.model.payloads.generic.GenericKeyData
 import com.yoti.mobile.android.keys.sdk.ui.NfcLinkerContract
 
 class SampleKeyContract {
@@ -17,6 +18,8 @@ class SampleKeyContract {
         fun showKeyData(tagPayload: GenericKeyData)
 
         fun showKeyFileData(file: GenericDataFile)
+
+        fun showExceptionReason(reason: Reason)
 
         fun getUserInput():String?
     }

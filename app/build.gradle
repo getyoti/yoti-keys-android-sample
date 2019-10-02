@@ -1,8 +1,10 @@
 
 buildscript {
     repositories {
+        mavenLocal()
         mavenCentral()
         google()
+
     }
     dependencies {
         classpath "com.google.gms:google-services:$googlePlayServicePluginVersion"
@@ -42,13 +44,18 @@ android {
             resValue "string", "TAPLINX_SDK_KEY", '"YOUR_TAP_LINX_KEY"'
         }
     }
+
+    packagingOptions {
+        exclude 'META-INF/kotlinx-io.kotlin_module'
+        exclude 'META-INF/atomicfu.kotlin_module'
+    }
 }
 
 dependencies {
     compileOnly 'org.jbundle.util.osgi.wrapped:org.jbundle.util.osgi.wrapped.org.apache.http.client:4.1.2'
 
-    implementation("com.yoti.mobile.android.keys:key-sdk-common:1.3.0-RC")
-    implementation("com.yoti.mobile.android.keys:key-sdk-ev2:1.3.0-RC")
+    implementation("com.yoti.mobile.android.sdk:key-sdk-common:1.4.1")
+    implementation("com.yoti.mobile.android.sdk:key-sdk-ev2:1.4.1")
 
     implementation parent.ext.libKotlin
     implementation parent.ext.libAppCompat

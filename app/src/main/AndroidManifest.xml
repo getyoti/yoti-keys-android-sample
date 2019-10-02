@@ -10,7 +10,7 @@
         android:theme="@style/AppTheme">
 
         <meta-data
-            android:name="com.yoti.mobile.android.keys.SDK_KEY"
+            android:name="com.yoti.mobile.android.keys.SDK_KEY_OFFLINE"
             android:value="@string/TAPLINX_SDK_KEY"/>
 
 
