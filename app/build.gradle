@@ -49,6 +49,11 @@ android {
         exclude 'META-INF/kotlinx-io.kotlin_module'
         exclude 'META-INF/atomicfu.kotlin_module'
     }
+
+    lintOptions {
+        abortOnError false
+    }
+
 }
 
 dependencies {
